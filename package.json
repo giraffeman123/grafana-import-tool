@@ -1,0 +1,22 @@
+{
+  "name": "graf-import-tool",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Eduardo Elliot Martinez Palomino",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^0.27.2",
+    "body-parser": "^1.20.0",
+    "dotenv": "^16.0.2",
+    "express": "^4.18.1",
+    "express-validator": "^6.14.2",
+    "https": "^1.0.0",
+    "ip": "^1.1.8",
+    "log4js": "^6.6.1",
+    "uuid": "^9.0.0"
+  }
+}
