@@ -1,0 +1,36 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: default-grafana-import-dashboards
+  namespace: default
+spec:  
+  initContainers:
+  - name: wait-for-prometheus-before-startup
+    image: busybox
+    command:  ["sh", "-c", 
+    "until nc -z google.com 80 > /dev/null; 
+    do echo Waiting for prometheus.; sleep 2; done;"]    
+  containers:
+  - name: grafana-import-tool
+    image: grafana-import-tool
+    imagePullPolicy: Never
+    ports:
+      - containerPort: 80
+    env:
+    - name: GRAFANA_URL
+      value: "https://k8-cluster.localtest.me/grafana"        
+    - name: GRAFANA_API_KEY
+      value: "MY_API_KEY"                  
+    - name: DATASOURCE_NAME
+      value: "prometheus-ns-test-monitor"                  
+    - name: DATASOURCE_URL
+      value: "http://prometheus.test-monitor:9090"                  
+    - name: NAMESPACE
+      value: "test-monitor"            
+    startupProbe:
+      httpGet:
+        path: /graf-import-tool/import
+        port: 80
+      initialDelaySeconds: 5
+      periodSeconds: 10      
+  restartPolicy: Never        
