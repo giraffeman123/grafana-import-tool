@@ -4,10 +4,11 @@ const { v4: uuidv4 } = require('uuid');
 const dotenv = require("dotenv"); 
 dotenv.config();
 
-const {high_level_application_metrics} = require('../dashboards/high_level_application_metrics');
-const {node_service_level_metrics_dashboard} = require('../dashboards/node_service_level_metrics_dashboard');
-const {nodejs_application_dashboard} = require('../dashboards/nodejs_application_dashboard');        
-const {nodejs_request_flow_dashboard} = require('../dashboards/nodejs_request_flow_dashboard');    
+const {getHighLevelAppMtrcs} = require('../dashboards/high_level_application_metrics');
+const {getNodeSvcLevelMtrcsDash} = require('../dashboards/node_service_level_metrics_dashboard');
+const {getNodejsAppDash} = require('../dashboards/nodejs_application_dashboard');        
+const {getNodeReqFlowDash} = require('../dashboards/nodejs_request_flow_dashboard');    
+const {cleanMetricsPrefixStr} = require('../utils/strFormatter');
 
 const grafanaService = axios.create({
     baseURL: process.env.GRAFANA_URL,
@@ -97,23 +98,49 @@ async function validateFolder(){
 
 async function validateDashboards(folderUid){
     try{
-        high_level_application_metrics.folderUid = folderUid;
-        node_service_level_metrics_dashboard.folderUid = folderUid;
-        nodejs_application_dashboard.folderUid = folderUid;
-        nodejs_request_flow_dashboard.folderUid = folderUid;
-                     
-        const createHLAMdb = await grafanaService.post('/api/dashboards/db',high_level_application_metrics);                
-        const createNSLMdb = await grafanaService.post('/api/dashboards/db',node_service_level_metrics_dashboard);                
-        const createNAdb = await grafanaService.post('/api/dashboards/db',nodejs_application_dashboard);                
-        const createNRFdb = await grafanaService.post('/api/dashboards/db',nodejs_request_flow_dashboard);                
-    
-        if(createHLAMdb.status === 200 && createHLAMdb.statusText === 'OK' &&
-            createNSLMdb.status === 200 && createNSLMdb.statusText === 'OK' &&
-            createNAdb.status === 200 && createNAdb.statusText === 'OK' &&
-            createNRFdb.status === 200 && createNRFdb.statusText === 'OK')
-            return "added prometheus instance,folder and dashboards";
-        else
-            return "DASHBOARD_ERROR: something went wrong while creating dashboards";
+        var apis_metrics_prefix = process.env.APIS_METRICS_PREFIX !== null ? 
+            process.env.APIS_METRICS_PREFIX.split(',') : null;
+
+        if(apis_metrics_prefix !== null){
+
+            var problemWithReq = false;
+            for(var i = 0; i < apis_metrics_prefix.length; i++){
+                var api_metric_prefix = cleanMetricsPrefixStr(apis_metrics_prefix[i]);
+
+                const high_level_application_metrics = getHighLevelAppMtrcs(api_metric_prefix);
+                const node_service_level_metrics_dashboard = getNodeSvcLevelMtrcsDash(api_metric_prefix);
+                const nodejs_application_dashboard = getNodejsAppDash(api_metric_prefix);
+                const nodejs_request_flow_dashboard = getNodeReqFlowDash(api_metric_prefix);
+
+                high_level_application_metrics.folderUid = folderUid;
+                node_service_level_metrics_dashboard.folderUid = folderUid;
+                nodejs_application_dashboard.folderUid = folderUid;
+                nodejs_request_flow_dashboard.folderUid = folderUid;
+                             
+                const createHLAMdb = await grafanaService.post('/api/dashboards/db',high_level_application_metrics);                
+                const createNSLMdb = await grafanaService.post('/api/dashboards/db',node_service_level_metrics_dashboard);                
+                const createNAdb = await grafanaService.post('/api/dashboards/db',nodejs_application_dashboard);                
+                const createNRFdb = await grafanaService.post('/api/dashboards/db',nodejs_request_flow_dashboard);                
+            
+                if(createHLAMdb.status === 200 && createHLAMdb.statusText === 'OK' &&
+                    createNSLMdb.status === 200 && createNSLMdb.statusText === 'OK' &&
+                    createNAdb.status === 200 && createNAdb.statusText === 'OK' &&
+                    createNRFdb.status === 200 && createNRFdb.statusText === 'OK')
+                {
+                    const dummy = '';
+                }else{                    
+                    problemWithReq = true;    
+                    break;
+                }                    
+            }
+
+            if(problemWithReq)
+                return "DASHBOARD_ERROR: something went wrong while creating dashboards";
+            else
+                return "added prometheus instance,folder and dashboards";
+        }else{
+            return "ENV_ERROR: environment variable 'APIS_METRICS_PREFIX' not declared"
+        }
     }catch(error){
         return error.response.data;
     }
