@@ -1,7 +1,7 @@
 
 const cleanMetricsPrefixStr = (str) => {
     if(/-/.test(str) === true)
-        return str.replace(/-/,"_");
+        return str.replace(/-/g,"_");
     else
         return str;
 };
